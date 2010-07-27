@@ -40,6 +40,7 @@ sub new {
         filename        => $filename,
         fh              => undef,
         could_be_binary => undef,
+        is_binary       => undef,
         opened          => undef,
         id              => undef,
     }, $class;
@@ -82,7 +83,18 @@ sub is_binary {
     my $self = shift;
 
     if ( $self->{could_be_binary} ) {
-        return -B $self->{filename};
+        if ( not defined $self->{is_binary} ) {
+            # Read head of the file to see if it appears to be a binary.
+            $self->{is_binary} = eval {
+                my $pos = tell $self->{fh};
+                seek( $self->{fh}, 0, 0 ) or return;
+                my $header;
+                read( $self->{fh}, $header, 512 ) or return;
+                seek( $self->{fh}, $pos, 0 ) or return;
+                return App::Ack::is_binary_string( $header );
+            } // -B $self->{filename};
+        }
+        return $self->{is_binary};
     }
 
     return 0;

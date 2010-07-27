@@ -75,7 +75,7 @@ BEGIN {
         ada         => [qw( ada adb ads )],
         asm         => [qw( asm s )],
         batch       => [qw( bat cmd )],
-        binary      => q{Binary files, as defined by Perl's -B op (default: off)},
+        binary      => q{Binary files (default: off)},
         cc          => [qw( c h xs )],
         cfmx        => [qw( cfc cfm cfml )],
         cpp         => [qw( cpp cc cxx m hpp hh h hxx )],
@@ -112,7 +112,7 @@ BEGIN {
         sql         => [qw( sql ctl )],
         tcl         => [qw( tcl itcl itk )],
         tex         => [qw( tex cls sty )],
-        text        => q{Text files, as defined by Perl's -T op (default: off)},
+        text        => q{Text files (default: off)},
         tt          => [qw( tt tt2 ttml )],
         vb          => [qw( bas cls frm ctl vb resx )],
         vim         => [qw( vim )],
@@ -503,16 +503,20 @@ sub filetypes {
         }
     }
 
-    return 'binary' if -B $filename;
-
-    # If there's no extension, or we don't recognize it, check the shebang line
+    # Read head of the file to see if the file appears to be a binary.
     my $fh;
     if ( !open( $fh, '<', $filename ) ) {
         App::Ack::warn( "$filename: $!" );
         return;
     }
-    my $header = <$fh>;
+    my $header;
+    read( $fh, $header, 512 ) // App::Ack::warn( "$filename: $!" );
     close $fh;
+
+    return 'binary' if is_binary_string( $header );
+
+    # If there's no extension, or we don't recognize it, check the shebang line
+    $header = $header =~ /\A(.*)$/m ? $1 : '';
 
     if ( $header =~ /^#!/ ) {
         return ($1,TEXT)       if $header =~ /\b(ruby|p(?:erl|hp|ython))\b/;
@@ -523,6 +527,18 @@ sub filetypes {
     }
 
     return (TEXT);
+}
+
+=head2 is_binary_string( $str )
+
+Returns true if a string appears to be a binary.
+
+=cut
+
+sub is_binary_string {
+    my $str = shift;
+
+    return $str !~ /\A[^\x00-\x08\x0B\x0C\x0E-\x1F]++\z/;
 }
 
 =head2 is_searchable( $filename )
