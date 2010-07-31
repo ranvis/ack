@@ -538,7 +538,7 @@ Returns true if a string appears to be a binary.
 sub is_binary_string {
     my $str = shift;
 
-    return $str !~ /\A[^\x00-\x08\x0B\x0C\x0E-\x1F]++\z/;
+    return $str !~ /\A[^\x00-\x08\x0B\x0E-\x1F]++\z/;
 }
 
 =head2 is_searchable( $filename )

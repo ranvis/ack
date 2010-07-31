@@ -43,6 +43,7 @@ sub new {
         is_binary       => undef,
         opened          => undef,
         id              => undef,
+        buffer          => '',
     }, $class;
 
     if ( $self->{filename} eq '-' ) {
@@ -50,7 +51,7 @@ sub new {
         $self->{could_be_binary} = 0;
     }
     else {
-        if ( !open( $self->{fh}, '<', $self->{filename} ) ) {
+        if ( !open( $self->{fh}, '<:raw', $self->{filename} ) ) {
             App::Ack::warn( "$self->{filename}: $!" );
             return;
         }
@@ -138,6 +139,7 @@ sub needs_line_scan {
     return 0 unless $rc && ( $rc == $size );
 
     my $regex = $opt->{regex};
+    $buffer =~ s/\x0D\x0A?|\x0C/\n/;
     return $buffer =~ /$regex/m;
 }
 
@@ -169,9 +171,19 @@ the text.  This basically emulates a call to C<< <$fh> >>.
 =cut
 
 sub next_text {
-    if ( defined ($_ = readline $_[0]->{fh}) ) {
-        $. = ++$_[0]->{line};
+    my $self = shift;
+
+    if ( $self->{buffer} eq '' ) {
+        local $/ = "\x0A";
+        $self->{buffer} = readline $self->{fh};
+    }
+    if ( defined $self->{buffer} ) {
+        $self->{buffer} =~ s/\A(.*?)([\x0A\x0C]|\x0D\x0A?|\z)//s;
+        $_ = $1 . ($2 ne '' ? "\n" : '');
+        $. = ++$self->{line};
         return 1;
+    } else {
+        undef $_;
     }
 
     return;
