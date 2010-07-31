@@ -139,7 +139,7 @@ sub needs_line_scan {
     return 0 unless $rc && ( $rc == $size );
 
     my $regex = $opt->{regex};
-    $buffer =~ s/\x0D\x0A?|\x0C/\n/;
+    $buffer =~ s/\x0D\x0A?|\x0C/\n/g;
     return $buffer =~ /$regex/m;
 }
 
